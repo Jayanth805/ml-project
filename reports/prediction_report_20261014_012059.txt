@@ -1,0 +1,36 @@
+============================================================
+TRUTHLENS AI - PREDICTION REPORT
+============================================================
+
+Generated: 2026-10-14T01:20:47.735474
+
+TEXT PREVIEW:
+----------------------------------------
+A news article states that there are floods in hyderabad currently
+
+IMAGE:
+----------------------------------------
+Filename: uploaded_image
+
+PREDICTION:
+----------------------------------------
+Result: REAL
+Probability REAL: 76.53%
+Probability FAKE: 23.47%
+Confidence: 76.53%
+
+IMAGE-TEXT CONSISTENCY:
+----------------------------------------
+CLIP Similarity Score: 0.3050
+Interpretation: Low semantic alignment
+Level: low
+
+MODEL INFORMATION:
+----------------------------------------
+Model Type: consistency_aware
+Model Version: untrained
+
+============================================================
+IMPORTANT DISCLAIMER
+============================================================
+This prediction is based on learned patterns and semantic consistency. It does not verify factual accuracy. Semantic similarity between image and text does not prove the news content is true or false.

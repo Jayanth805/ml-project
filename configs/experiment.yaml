@@ -1,0 +1,138 @@
+# Experiment Configuration for Multimodal Fake News Detection
+
+# Dataset configuration
+dataset:
+  # Path to Fakeddit dataset (update this with your local path)
+  path: "data/fakeddit"
+  # Path to NewsCLIPpings dataset (optional, for out-of-context detection)
+  newsclippings_path: "data/news_clippings"
+
+  # Data split ratios
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+  # Label mapping for Fakeddit binary classification
+  # Fakeddit has 3-way: 0=reliable, 1=unreliable, 2=misleading
+  # We map to binary: 1=fake (unreliable + misleading), 0=real (reliable)
+  label_mapping:
+    0: 0  # reliable -> real
+    1: 1  # unreliable -> fake
+    2: 1  # misleading -> fake
+
+  # Text column name in Fakeddit
+  text_column: "clean_title"
+  # Image column name (contains image ID)
+  image_column: "image_id"
+  # Label column name
+  label_column: "3_way_label"
+
+  # Maximum text length in tokens
+  max_text_length: 128
+
+  # Cache features for faster training
+  cache_features: true
+  feature_cache_dir: "artifacts/features"
+
+# Model configuration
+model:
+  # Text encoder: BERT
+  text_encoder:
+    name: "google-bert/bert-base-uncased"
+    embedding_dim: 768
+    output_dim: 256  # Projected dimension
+
+  # Image encoder: Vision Transformer
+  image_encoder:
+    name: "google/vit-base-patch16-224"
+    embedding_dim: 768
+    output_dim: 256  # Projected dimension
+
+  # CLIP for semantic similarity
+  clip:
+    name: "openai/clip-vit-base-patch32"
+    embedding_dim: 512
+
+  # Fusion classifier
+  fusion:
+    input_dim: 1025  # 256*4 + 1 (text, image, diff, product, similarity)
+    hidden_dim: 256
+    dropout: 0.3
+    output_dim: 1
+
+  # Pretrained encoder behavior
+  freeze_encoders: true  # Keep encoders frozen initially
+  fine_tune_encoders: false  # Enable fine-tuning later
+
+# Training configuration
+training:
+  # Batch size (adjust based on GPU memory)
+  batch_size: 16
+  # For limited GPU memory, reduce batch size
+  gradient_accumulation_steps: 1
+
+  # Learning rates
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+
+  # Optimizer
+  optimizer: "AdamW"
+  scheduler: "ReduceLROnPlateau"
+  scheduler_patience: 2
+  scheduler_factor: 0.5
+
+  # Training duration
+  epochs: 5
+  early_stopping_patience: 3
+
+  # Regularization
+  dropout: 0.3
+  gradient_clip_norm: 1.0
+
+  # Reproducibility
+  seed: 42
+
+  # Checkpointing
+  checkpoint_dir: "artifacts/checkpoints"
+  save_best_only: true
+
+  # Device
+  device: "cuda"  # "cuda" or "cpu"
+  use_amp: false  # Automatic mixed precision
+
+# Evaluation configuration
+evaluation:
+  # Metrics to compute
+  metrics:
+    - accuracy
+    - macro_f1
+    - weighted_f1
+    - precision
+    - recall
+    - roc_auc
+
+  # Threshold for binary classification (0.5 default)
+  decision_threshold: 0.5
+
+  # Generate plots
+  generate_plots: true
+  plot_dir: "results/plots"
+
+  # Image swap experiment
+  image_swap:
+    enabled: true
+    num_swapped_samples: 1000  # Number of samples to swap
+    random_seed: 42
+
+# Logging
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  log_interval: 10  # Log every N batches
+
+# Paths
+paths:
+  artifacts_dir: "artifacts"
+  results_dir: "results"
+  reports_dir: "reports"
+  cache_dir: ".cache"
