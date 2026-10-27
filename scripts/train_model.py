@@ -108,11 +108,11 @@ def train_model(
     # Create data loaders
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=4,
-        collate_fn=multimodal_collate
+        collate_fn=multimodal_collate, persistent_workers=True
     )
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=4,
-        collate_fn=multimodal_collate
+        collate_fn=multimodal_collate, persistent_workers=True
     )
 
     # Initialize preprocessor

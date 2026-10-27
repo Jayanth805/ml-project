@@ -86,6 +86,14 @@ class Evaluator:
 
                 # Forward pass
                 logits, intermediate = self.model(**inputs)
+                clip_similarity = intermediate.get('clip_similarity')
+                if (clip_similarity is None and self.model.model_type != 'text_only'
+                        and 'clip_pixel_values' in inputs):
+                    clip_similarity = self.model.encoders.compute_clip_similarity(
+                        inputs['clip_input_ids'],
+                        inputs['clip_attention_mask'],
+                        inputs['clip_pixel_values']
+                    )
 
                 # Get predictions
                 probs = torch.sigmoid(logits.squeeze(-1)).cpu().numpy()
@@ -96,7 +104,7 @@ class Evaluator:
                 all_labels.extend(labels.cpu().numpy())
                 all_probs.extend(probs)
                 all_clip_similarities.extend(
-                    intermediate.get('clip_similarity', torch.zeros(len(labels))).cpu().numpy()
+                    (clip_similarity if clip_similarity is not None else torch.zeros(len(labels))).cpu().numpy()
                 )
                 all_sample_ids.extend(batch.get('sample_id', [f"sample_{i}" for i in range(len(labels))]))
 

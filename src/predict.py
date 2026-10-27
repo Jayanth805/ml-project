@@ -96,6 +96,12 @@ class NewsAnalyzer:
 
             # Load model state
             if 'model_state_dict' in checkpoint:
+                saved_model_config = checkpoint.get('config', {}).get('model_config')
+                if saved_model_config:
+                    model_config = ClassifierConfig(**saved_model_config)
+                    if model_config != self.model.config:
+                        self.model = MultimodalClassifier(model_config).to(self.device)
+                        self.model.eval()
                 self.model.load_state_dict(checkpoint['model_state_dict'])
                 self.checkpoint_info = checkpoint.get('config', {})
                 self.model_type = self.checkpoint_info.get('model_config', {}).get(
@@ -130,8 +136,16 @@ class NewsAnalyzer:
         Returns:
             PredictionResult with analysis output
         """
-        if not text or not text.strip():
+        text = text or ""
+        if self.model_type == "image_only":
+            if image is None:
+                raise ValueError("The image-only model requires an image")
+            if not text.strip():
+                text = "Image-only classification"
+        elif not text.strip():
             raise ValueError("Text input cannot be empty")
+        elif self.model_type != "text_only" and image is None:
+            raise ValueError(f"The {self.model_type} model requires both text and an image")
 
         # Load image if path provided
         image_obj = None
@@ -171,8 +185,9 @@ class NewsAnalyzer:
                 prob_fake = torch.sigmoid(logits.squeeze(-1)).item()
 
                 # Update CLIP similarity from model output if available
-                if 'clip_similarity' in intermediate:
-                    clip_sim = intermediate['clip_similarity'].item()
+                intermediate_clip_similarity = intermediate.get('clip_similarity')
+                if intermediate_clip_similarity is not None:
+                    clip_sim = intermediate_clip_similarity.item()
         else:
             # No checkpoint - return a placeholder result
             prob_fake = 0.5

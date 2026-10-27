@@ -127,10 +127,10 @@ class MultimodalClassifier(nn.Module):
         self,
         text_input_ids: torch.Tensor,
         text_attention_mask: torch.Tensor,
-        pixel_values: torch.Tensor,
-        clip_input_ids: torch.Tensor,
-        clip_attention_mask: torch.Tensor,
-        clip_pixel_values: torch.Tensor
+        pixel_values: torch.Tensor = None,
+        clip_input_ids: torch.Tensor = None,
+        clip_attention_mask: torch.Tensor = None,
+        clip_pixel_values: torch.Tensor = None
     ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """
         Forward pass through the complete model.
@@ -147,6 +147,8 @@ class MultimodalClassifier(nn.Module):
             Tuple of (logits, intermediate_outputs)
         """
         if self.model_type == 'text_only':
+            if text_input_ids is None or text_attention_mask is None:
+                raise ValueError("The text-only model requires tokenized text")
             # Extract text features only
             text_features = self.encoders.extract_text_features(
                 text_input_ids, text_attention_mask
@@ -156,6 +158,8 @@ class MultimodalClassifier(nn.Module):
             return logits, intermediate
 
         elif self.model_type == 'image_only':
+            if pixel_values is None:
+                raise ValueError("The image-only model requires image pixels")
             # Extract image features only
             image_features = self.encoders.extract_image_features(pixel_values)
             logits = self.image_classifier(image_features)
@@ -164,20 +168,21 @@ class MultimodalClassifier(nn.Module):
 
         else:
             # Multimodal models
-            features = self.encoders(
-                text_input_ids=text_input_ids,
-                text_attention_mask=text_attention_mask,
-                pixel_values=pixel_values,
-                clip_input_ids=clip_input_ids,
-                clip_attention_mask=clip_attention_mask,
-                clip_pixel_values=clip_pixel_values
+            if text_input_ids is None or text_attention_mask is None:
+                raise ValueError(f"The {self.model_type} model requires tokenized text")
+            if pixel_values is None:
+                raise ValueError(f"The {self.model_type} model requires image pixels")
+            text_features = self.encoders.extract_text_features(
+                text_input_ids, text_attention_mask
             )
-
-            text_features = features['text_features']
-            image_features = features['image_features']
-            clip_similarity = features['clip_similarity']
+            image_features = self.encoders.extract_image_features(pixel_values)
 
             if self.model_type == 'consistency_aware':
+                if clip_input_ids is None or clip_attention_mask is None or clip_pixel_values is None:
+                    raise ValueError("The consistency-aware model requires CLIP text and image inputs")
+                clip_similarity = self.encoders.compute_clip_similarity(
+                    clip_input_ids, clip_attention_mask, clip_pixel_values
+                )
                 logits, intermediate = self.fusion(
                     text_features, image_features, clip_similarity
                 )
@@ -187,7 +192,7 @@ class MultimodalClassifier(nn.Module):
                 )
             elif self.model_type == 'ablation':
                 logits, intermediate = self.fusion(
-                    text_features, image_features, clip_similarity
+                    text_features, image_features, None
                 )
 
             return logits, intermediate
@@ -196,10 +201,10 @@ class MultimodalClassifier(nn.Module):
         self,
         text_input_ids: torch.Tensor,
         text_attention_mask: torch.Tensor,
-        pixel_values: torch.Tensor,
-        clip_input_ids: torch.Tensor,
-        clip_attention_mask: torch.Tensor,
-        clip_pixel_values: torch.Tensor
+        pixel_values: torch.Tensor = None,
+        clip_input_ids: torch.Tensor = None,
+        clip_attention_mask: torch.Tensor = None,
+        clip_pixel_values: torch.Tensor = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Get prediction probabilities.

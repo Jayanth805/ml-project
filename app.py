@@ -8,6 +8,7 @@ import sys
 import io
 import json
 import base64
+import html
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -144,6 +145,7 @@ st.markdown("""
     [data-testid="stMetricLabel"] p { color:var(--muted)!important; font-size:.8rem!important; letter-spacing:.04em; text-transform:uppercase; }
     [data-testid="stMetricValue"] { color:var(--terra-dark)!important; font-family:'Fraunces',Georgia,serif; }
     .stButton>button,.stDownloadButton>button { border-radius:11px; min-height:2.65rem; font-weight:700; border:1px solid #d9c7b4; color:var(--ink); background:#fffaf2; transition:all .18s ease; }
+    .st-key-view_text_report button { color:#000!important; }
     .stButton>button[kind="primary"] { background:var(--terracotta); color:#fffaf2; border:1px solid var(--terracotta); }
     .stButton>button:hover,.stDownloadButton>button:hover { transform:translateY(-1px); border-color:var(--terracotta); color:var(--terra-dark); }
     [data-testid="stRadio"] [role="radiogroup"] { display:flex; flex-direction:row; flex-wrap:wrap; gap:5px; padding:5px; border:1px solid #e4d5c4; border-radius:999px; background:#eee3d4; }
@@ -173,6 +175,43 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Model variants supported by the classifier and training script.
+MODEL_OPTIONS = {
+    "text_only": "Text only (BERT)",
+    "image_only": "Image only (ViT)",
+    "standard": "Standard fusion (BERT + ViT)",
+    "consistency_aware": "Consistency aware (BERT + ViT + CLIP)",
+    "ablation": "Ablation (fusion without CLIP similarity)",
+}
+
+MODEL_BRIEFINGS = {
+    "text_only": ("Language patterns in the headline or article", "BERT encodes the text, then a classifier estimates REAL vs. FAKE.", "Text is required; an image is optional and is not used by this model."),
+    "image_only": ("Visual patterns in the uploaded image", "ViT encodes the image, then a classifier estimates REAL vs. FAKE.", "An image is required. Text is not used to make this model's prediction."),
+    "standard": ("Combined language and image features", "BERT and ViT features are fused before the REAL vs. FAKE classifier.", "Both text and an image are required; CLIP similarity is diagnostic only."),
+    "consistency_aware": ("Language, image features, and image-text semantic alignment", "BERT and ViT features are fused with CLIP similarity for classification.", "Both text and an image are required. CLIP measures semantic alignment, not truth."),
+    "ablation": ("Combined language and image features without CLIP as a classifier input", "BERT and ViT features are fused; CLIP similarity can be shown as a diagnostic.", "Both text and an image are required. This variant helps compare the role of CLIP."),
+}
+
+DEMO_TEXT = "The city council announced that public buses will be free every Sunday starting next month."
+
+
+def clear_analysis_model():
+    """Require an explicit reload after changing the selected model."""
+    st.session_state.analyzer = None
+    st.session_state.checkpoint_loaded = False
+    st.session_state.last_result = None
+
+
+def find_model_checkpoint(model_type: str) -> Path:
+    """Find the conventional best-checkpoint path for a model variant."""
+    checkpoint_root = Path(__file__).parent / "artifacts" / "checkpoints"
+    candidates = [
+        checkpoint_root / model_type / f"{model_type}_best.pt",
+        checkpoint_root / f"{model_type}_best.pt",
+    ]
+    return next((path for path in candidates if path.is_file()), candidates[0])
+
+
 # Initialize session state
 def init_session_state():
     """Initialize Streamlit session state variables."""
@@ -187,13 +226,17 @@ def init_session_state():
 
 
 @st.cache_resource
-def load_analyzer(checkpoint_path: str, device: str = "cuda"):
+def load_analyzer(checkpoint_path: str, model_type: str):
     """Load the analyzer with cached checkpoint."""
     try:
-        analyzer = NewsAnalyzer(checkpoint_path=checkpoint_path)
+        analyzer = NewsAnalyzer(checkpoint_path=checkpoint_path, model_type=model_type)
+        if not analyzer.is_ready():
+            raise ValueError("Checkpoint could not be loaded into the selected model")
+        if analyzer.model_type != model_type:
+            raise ValueError(f"Checkpoint contains {analyzer.model_type}, not {model_type}")
         return analyzer
     except Exception as e:
-        st.error(f"Error loading checkpoint: {e}")
+        print(f"Error loading checkpoint: {e}")
         return None
 
 
@@ -269,13 +312,30 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
     <p>Read the claim. Inspect the image. Surface signals that help you assess how well they fit together.</p>
     <div class="hero-meta"><span class="pill">BERT · language</span><span class="pill">ViT · vision</span><span class="pill">CLIP · alignment</span></div></section>''', unsafe_allow_html=True)
 
+    selected_model_type = st.selectbox(
+        "Select model",
+        options=list(MODEL_OPTIONS),
+        index=list(MODEL_OPTIONS).index("consistency_aware"),
+        format_func=lambda model_type: MODEL_OPTIONS[model_type],
+        key="analysis_model_type",
+        on_change=clear_analysis_model,
+        help="Choose a trained model variant for this analysis.",
+    )
+    focus, method, required = MODEL_BRIEFINGS[selected_model_type]
+    with st.container(border=True):
+        brief_cols = st.columns([1.05, 1.6, 1.6])
+        brief_cols[0].markdown(f"**Model focus**  \n{focus}")
+        brief_cols[1].markdown(f"**How it works**  \n{method}")
+        brief_cols[2].markdown(f"**Input needed**  \n{required}")
+    checkpoint_default = find_model_checkpoint(selected_model_type)
+
     summary_path = Path(__file__).parent / "data" / "processed" / "dataset_summary.json"
     try:
         dataset_summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
     except (OSError, json.JSONDecodeError):
         dataset_summary = {}
     status_cols = st.columns(3)
-    status_cols[0].metric("Model checkpoint", "READY" if default_checkpoint.is_file() else "PENDING")
+    status_cols[0].metric("Selected model checkpoint", "READY" if checkpoint_default.is_file() else "NOT TRAINED")
     status_cols[1].metric("Prepared examples", f"{dataset_summary.get('total_samples', 0):,}")
     status_cols[2].metric("Compute device", "GPU" if torch.cuda.is_available() else "CPU")
     st.markdown("\n")
@@ -284,31 +344,38 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
     with st.expander("⚙️ Model Settings", expanded=True):
         col1, col2 = st.columns([2, 1])
 
+        checkpoint_key = f"analysis_checkpoint_path_{selected_model_type}"
+        if not st.session_state.get(checkpoint_key) and checkpoint_default.is_file():
+            st.session_state[checkpoint_key] = str(checkpoint_default)
+
         checkpoint_path = col1.text_input(
             "Checkpoint Path",
-            value=str(default_checkpoint) if default_checkpoint.exists() else "",
-            help="Path to trained model checkpoint"
+            value=str(checkpoint_default) if checkpoint_default.exists() else "",
+            key=checkpoint_key,
+            help=f"Checkpoint for {MODEL_OPTIONS[selected_model_type]}"
         )
 
         if col2.button("Load Model"):
             if checkpoint_path and os.path.exists(checkpoint_path):
                 with st.spinner("Loading model..."):
-                    st.session_state.analyzer = load_analyzer(checkpoint_path)
+                    st.session_state.analyzer = load_analyzer(checkpoint_path, selected_model_type)
                     if st.session_state.analyzer:
                         st.session_state.checkpoint_loaded = st.session_state.analyzer.is_ready()
                         if st.session_state.checkpoint_loaded:
-                            st.success("Model loaded successfully!")
+                            st.success(f"Loaded {MODEL_OPTIONS[st.session_state.analyzer.model_type]}.")
                         else:
                             st.warning("Checkpoint structure may be incompatible.")
                     else:
                         st.session_state.checkpoint_loaded = False
             else:
-                st.error("Checkpoint not found. Please train the model first or provide a valid path.")
+                st.error(f"No checkpoint found for {MODEL_OPTIONS[selected_model_type]}. Train this model first or provide a valid checkpoint path.")
 
         if st.session_state.checkpoint_loaded:
             st.info(f"✅ Model loaded: {st.session_state.analyzer.model_type}")
         else:
-            st.warning("⚠️ No trained model loaded. You can still see CLIP similarity analysis.")
+            st.warning(f"No trained {MODEL_OPTIONS[selected_model_type]} model is loaded. Load its checkpoint before analyzing.")
+            if not checkpoint_default.is_file():
+                st.code(f"python scripts/train_model.py --model {selected_model_type}", language="bash")
 
     st.markdown("---")
 
@@ -317,15 +384,21 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
 
     with col1:
         st.markdown("### 📝 Input Text")
+        if st.button("Insert demo claim", key="insert_demo_claim", help="Adds a synthetic example for demonstrating the workflow."):
+            st.session_state.analysis_text_input = DEMO_TEXT
+        st.caption("Synthetic example for demonstrating the interface; it is not a verified news claim.")
         text_input = st.text_area(
             "News Headline or Article",
             height=200,
             placeholder="Enter a news headline or article text here...",
-            help="Enter the text content of the news you want to analyze"
+            help="Enter the text content of the news you want to analyze",
+            key="analysis_text_input",
         )
 
     with col2:
-        st.markdown("### 🖼️ Image (Optional)")
+        image_required = selected_model_type != "text_only"
+        st.markdown(f"### 🖼️ Image ({'Required' if image_required else 'Optional'})")
+        st.caption("Required for this model." if image_required else "Optional for the text-only model.")
         uploaded_file = st.file_uploader(
             "Upload an image",
             type=['jpg', 'jpeg', 'png'],
@@ -348,9 +421,15 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
         st.rerun()
 
     # Process analysis
-    if analyze_clicked and text_input:
-        if not text_input.strip():
-            st.error("Please enter some text to analyze.")
+    if analyze_clicked:
+        if not st.session_state.checkpoint_loaded or not st.session_state.analyzer:
+            st.error("Load a trained checkpoint for the selected model before analyzing.")
+            return
+        if selected_model_type != "image_only" and not text_input.strip():
+            st.error("Please enter text for this model.")
+            return
+        if image_required and uploaded_file is None:
+            st.error(f"The {MODEL_OPTIONS[selected_model_type]} model requires an image.")
             return
 
         with st.spinner("Analyzing..."):
@@ -359,12 +438,7 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
                 if uploaded_file is not None:
                     image_data = Image.open(uploaded_file)
 
-                if st.session_state.analyzer:
-                    result = st.session_state.analyzer.analyze(text_input, image_data)
-                else:
-                    # Create analyzer without checkpoint for CLIP analysis
-                    analyzer = NewsAnalyzer()
-                    result = analyzer.analyze(text_input, image_data)
+                result = st.session_state.analyzer.analyze(text_input, image_data)
 
                 st.session_state.last_result = prediction_to_dict(result)
                 st.session_state.results_history.append(prediction_to_dict(result))
@@ -411,13 +485,26 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
         with col4:
             st.metric(
                 "CLIP Similarity",
-                f"{result['clip_similarity']:.3f}",
-                help="Semantic similarity between text and image"
+                f"{result['clip_similarity']:.3f}" if selected_model_type != "text_only" else "N/A",
+                help=("Semantic similarity between text and image; this model does not use it for classification."
+                      if selected_model_type in {"standard", "image_only", "ablation"} else
+                      "Semantic similarity between text and image" if selected_model_type != "text_only" else
+                      "Text-only model; CLIP similarity is not used.")
             )
 
         # Consistency interpretation
         st.markdown("#### 🔗 Image-Text Consistency")
         interp = result['consistency_interpretation']
+        if selected_model_type != "consistency_aware":
+            interp = {
+                "interpretation": (
+                    "Diagnostic only; this model does not use CLIP similarity for classification."
+                    if selected_model_type != "text_only"
+                    else "Not applicable to the text-only model."
+                ),
+                "level": "Not used by selected classifier",
+                "warning": None,
+            }
 
         consistency_col1, consistency_col2 = st.columns(2)
         with consistency_col1:
@@ -442,18 +529,24 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
 
         # Text report
         with export_col1:
-            if st.button("📝 View Text Report", use_container_width=True):
-                with st.expander("Report Content", expanded=True):
-                    st.text(f"TruthLens AI - Prediction Report")
-                    st.text(f"Generated: {result['timestamp']}")
-                    st.text("-" * 40)
-                    st.text(f"Prediction: {result['prediction']}")
-                    st.text(f"Probability REAL: {result['probability_real']:.2%}")
-                    st.text(f"Probability FAKE: {result['probability_fake']:.2%}")
-                    st.text(f"CLIP Similarity: {result['clip_similarity']:.4f}")
-                    st.text("-" * 40)
-                    st.text("Disclaimer:")
-                    st.text(result['disclaimer'])
+            if st.button("📝 View Text Report", use_container_width=True, key="view_text_report"):
+                with st.expander("Report Content", expanded=True, key="report_content"):
+                    report_text = "\n".join([
+                        "TruthLens AI - Prediction Report",
+                        f"Generated: {result['timestamp']}",
+                        "-" * 40,
+                        f"Prediction: {result['prediction']}",
+                        f"Probability REAL: {result['probability_real']:.2%}",
+                        f"Probability FAKE: {result['probability_fake']:.2%}",
+                        f"CLIP Similarity: {result['clip_similarity']:.4f}",
+                        "-" * 40,
+                        "Disclaimer:",
+                        result['disclaimer'],
+                    ])
+                    st.markdown(
+                        f'<div style="color:#000 !important; white-space:pre-wrap;">{html.escape(report_text)}</div>',
+                        unsafe_allow_html=True,
+                    )
 
         # JSON export
         with export_col2:
