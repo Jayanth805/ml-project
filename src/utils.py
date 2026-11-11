@@ -131,6 +131,43 @@ def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> f
     return numerator / denominator
 
 
+# Exploratory threshold: in a local 48-pair check, paired CLIP cosine scores
+# clustered above randomly shuffled pairs near 0.22, with some overlap.
+CLIP_MISMATCH_THRESHOLD = 0.22
+MULTIMODAL_MODEL_TYPES = {"standard", "consistency_aware", "ablation"}
+
+
+def apply_mismatch_policy(
+    classifier_prediction: str,
+    model_type: str,
+    clip_similarity: Optional[float],
+) -> Dict[str, Any]:
+    """Apply the project's explicit low-alignment decision rule.
+
+    For multimodal variants, a CLIP score below the exploratory threshold makes
+    the final label FAKE, even if the learned classifier predicted REAL. The
+    caller should retain the raw classifier label and probabilities separately.
+    """
+    is_mismatch = (
+        model_type in MULTIMODAL_MODEL_TYPES
+        and clip_similarity is not None
+        and clip_similarity < CLIP_MISMATCH_THRESHOLD
+    )
+    if is_mismatch:
+        return {
+            "prediction": "FAKE",
+            "classifier_prediction": classifier_prediction,
+            "prediction_reason": "low_clip_alignment_override",
+            "possible_mismatch": True,
+        }
+    return {
+        "prediction": classifier_prediction,
+        "classifier_prediction": classifier_prediction,
+        "prediction_reason": "classifier",
+        "possible_mismatch": False,
+    }
+
+
 def clip_similarity_to_consistency_score(similarity: float) -> Dict[str, Any]:
     """
     Convert CLIP cosine similarity to a human-readable consistency interpretation.
@@ -139,27 +176,27 @@ def clip_similarity_to_consistency_score(similarity: float) -> Dict[str, Any]:
     A high score means the image semantically matches the text,
     but does NOT prove the news content is true.
     """
-    if similarity >= 0.8:
-        interpretation = "Strong semantic match"
-        level = "high"
-    elif similarity >= 0.6:
-        interpretation = "Moderate semantic match"
-        level = "medium-high"
-    elif similarity >= 0.4:
-        interpretation = "Weak semantic match"
-        level = "medium"
-    elif similarity >= 0.2:
-        interpretation = "Low semantic alignment"
+    possible_mismatch = similarity < CLIP_MISMATCH_THRESHOLD
+    if possible_mismatch:
+        interpretation = "Low image-text alignment; possible out-of-context image"
         level = "low"
+    elif similarity < 0.28:
+        interpretation = "Moderate image-text alignment"
+        level = "moderate"
     else:
-        interpretation = "No semantic alignment"
-        level = "very-low"
+        interpretation = "Higher image-text alignment"
+        level = "higher"
 
     return {
         "raw_similarity": float(similarity),
         "interpretation": interpretation,
         "level": level,
-        "warning": "Semantic similarity does not indicate factual accuracy"
+        "possible_mismatch": possible_mismatch,
+        "mismatch_threshold": CLIP_MISMATCH_THRESHOLD,
+        "warning": (
+            "This is a heuristic CLIP alignment warning, not a fake-news or image-authenticity verdict. "
+            "The threshold was selected from a small paired-versus-shuffled sample and may flag valid pairs."
+        )
     }
 
 

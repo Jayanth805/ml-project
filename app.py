@@ -35,108 +35,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 1.5rem;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .prediction-real {
-        background-color: #d4edda;
-        color: #155724;
-        padding: 1rem;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 1.5rem;
-        text-align: center;
-    }
-    .prediction-fake {
-        background-color: #f8d7da;
-        color: #721c24;
-        padding: 1rem;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 1.5rem;
-        text-align: center;
-    }
-    .disclaimer {
-        background-color: #fff3cd;
-        color: #856404;
-        padding: 1rem;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        margin-top: 1rem;
-    }
-    .sidebar-section {
-        background-color: #f1f3f5;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-
-# Refined visual system shared by the app's research and analysis pages.
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-    :root { --ink:#eaf0ff; --muted:#a8b4d0; --line:rgba(179,198,232,.14); --mint:#7de3c3; }
-    .stApp { background:radial-gradient(ellipse at 8% 0%,#1b2c4d 0,#0b1220 42%,#090f1b 100%); color:var(--ink); font-family:'DM Sans',sans-serif; }
-    [data-testid="stHeader"] { background:rgba(9,15,27,.72); }
-    [data-testid="stSidebar"] { background:linear-gradient(180deg,#111b30,#0d1525); border-right:1px solid var(--line); }
-    [data-testid="stSidebar"] label { color:var(--ink)!important; }
-    h1,h2,h3,h4 { font-family:'Manrope',sans-serif!important; letter-spacing:-.035em; color:var(--ink)!important; }
-    p,li { color:#c6d0e5; }
-    [data-testid="stMetric"] { background:linear-gradient(145deg,rgba(28,43,70,.94),rgba(17,27,46,.88)); border:1px solid var(--line); border-radius:16px; padding:18px 20px; box-shadow:0 12px 28px rgba(0,0,0,.12); }
-    [data-testid="stMetricLabel"] p { color:var(--muted)!important; font-size:.82rem!important; }
-    [data-testid="stMetricValue"] { color:var(--ink)!important; font-family:'Manrope',sans-serif; }
-    .stButton>button,.stDownloadButton>button { border-radius:11px; min-height:2.7rem; font-weight:700; border:1px solid var(--line); transition:all .18s ease; }
-    .stButton>button[kind="primary"] { background:linear-gradient(100deg,#80e1c0,#79b9ff); color:#081321; border:0; }
-    .stButton>button:hover,.stDownloadButton>button:hover { transform:translateY(-1px); border-color:var(--mint); }
-    input,textarea,[data-baseweb="select"]>div { background:#101a2d!important; color:var(--ink)!important; border-color:var(--line)!important; border-radius:10px!important; }
-    [data-testid="stExpander"] { background:rgba(17,27,46,.68); border:1px solid var(--line); border-radius:14px; }
-    [data-testid="stFileUploader"] section { background:rgba(16,26,45,.72); border:1px dashed rgba(125,227,195,.4); border-radius:14px; }
-    .hero { position:relative; overflow:hidden; padding:34px 38px; margin:8px 0 24px; border:1px solid rgba(171,198,245,.2); border-radius:24px; background:linear-gradient(115deg,rgba(35,58,95,.95),rgba(18,34,57,.9) 58%,rgba(22,57,67,.82)); box-shadow:0 24px 70px rgba(0,0,0,.24); }
-    .hero:after { content:''; position:absolute; width:260px; height:260px; right:-68px; top:-125px; border-radius:50%; border:1px solid rgba(125,227,195,.28); box-shadow:0 0 0 26px rgba(125,227,195,.035),0 0 0 54px rgba(125,227,195,.025); }
-    .eyebrow { color:var(--mint); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; font-weight:700; }
-    .hero h1 { margin:10px 0 8px; font-size:2.55rem; line-height:1.12; }
-    .hero p { max-width:720px; margin:0; color:#c2cee4; font-size:1rem; }
-    .hero-meta { display:flex; gap:9px; flex-wrap:wrap; margin-top:22px; }
-    .pill { display:inline-block; border:1px solid rgba(190,210,245,.2); background:rgba(5,13,25,.24); color:#dce8ff; border-radius:999px; padding:6px 11px; font-size:.76rem; }
-    .section-label { margin:10px 0 14px; color:#dce7f8; font-family:'Manrope',sans-serif; font-weight:700; font-size:1.12rem; }
-    .prediction-real { background:rgba(36,153,117,.2); color:#8ef0cd; border:1px solid rgba(125,227,195,.3); }
-    .prediction-fake { background:rgba(200,74,98,.2); color:#ff9aa9; border:1px solid rgba(255,154,169,.3); }
-    .disclaimer { background:rgba(206,160,58,.13); color:#f4d58a; border:1px solid rgba(230,187,89,.23); }
-    .main-header { color:#eaf0ff; font-family:'Manrope',sans-serif; }
-    .sub-header { color:#a8b4d0; }
-    @media(max-width:700px) { .hero {padding:26px 22px;} .hero h1 {font-size:2rem;} }
-</style>
-""", unsafe_allow_html=True)
-
 # Warm cream and terracotta editorial theme.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
     :root { --ink:#352a23; --muted:#79685a; --line:#e5d7c6; --terracotta:#a94f36; --terra-dark:#7e3829; --cream:#f5efe5; --paper:#fffaf2; --sage:#67745b; }
     .stApp { background:radial-gradient(ellipse at 5% 0%,#fffaf2 0,#f5efe5 53%,#eee3d4 100%); color:var(--ink); font-family:'DM Sans',sans-serif; }
+    section.main > div.block-container { max-width:1440px; padding-top:2rem; padding-bottom:3rem; }
     [data-testid="stHeader"] { background:rgba(245,239,229,.94); }
     [data-testid="stSidebar"] { display:none; }
     h1,h2,h3,h4 { font-family:'Fraunces',Georgia,serif!important; letter-spacing:-.025em; color:var(--ink)!important; }
@@ -155,9 +60,11 @@ st.markdown("""
     input,textarea,[data-baseweb="select"]>div { background:#fffaf2!important; color:var(--ink)!important; border-color:#decebc!important; border-radius:10px!important; }
     [data-testid="stExpander"] { background:rgba(255,250,242,.76); border:1px solid var(--line); border-radius:14px; }
     [data-testid="stFileUploader"] section { background:#fffaf2; border:1px dashed #c78c72; border-radius:14px; }
-    .nav-brand { display:flex; align-items:center; gap:10px; min-height:48px; margin-bottom:4px; color:var(--ink); font-family:'Fraunces',Georgia,serif; font-size:1.23rem; font-weight:700; }
-    .nav-mark { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:50%; background:var(--terracotta); color:#fffaf2; font-family:'DM Sans',sans-serif; font-size:1rem; }
-    .nav-caption { color:var(--muted); font-family:'DM Sans',sans-serif; font-size:.62rem; letter-spacing:.16em; text-transform:uppercase; }
+    .app-masthead { padding:8px 0 20px; border-bottom:1px solid rgba(169,79,54,.16); margin-bottom:14px; }
+    .masthead-kicker { color:var(--terracotta); font-size:.7rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; }
+    .masthead-title { color:var(--ink); font-family:'Fraunces',Georgia,serif; font-size:2.2rem; font-weight:600; letter-spacing:-.04em; line-height:1.1; margin:5px 0 3px; }
+    .masthead-title span { color:var(--terracotta); }
+    .masthead-subtitle { color:var(--muted); font-size:.92rem; margin:0; }
     .hero { position:relative; overflow:hidden; padding:36px 40px; margin:8px 0 23px; border:1px solid #d8b8a2; border-radius:24px; background:linear-gradient(112deg,#f1dfca 0%,#f8ecdc 58%,#e9d8c2 100%); box-shadow:0 18px 46px rgba(89,60,37,.09); }
     .hero:after { content:''; position:absolute; width:280px; height:280px; right:-62px; top:-150px; border-radius:50%; border:1px solid rgba(169,79,54,.25); box-shadow:0 0 0 24px rgba(169,79,54,.045),0 0 0 50px rgba(169,79,54,.03); }
     .eyebrow { color:var(--terracotta); font-size:.7rem; letter-spacing:.19em; text-transform:uppercase; font-weight:700; }
@@ -187,9 +94,9 @@ MODEL_OPTIONS = {
 MODEL_BRIEFINGS = {
     "text_only": ("Language patterns in the headline or article", "BERT encodes the text, then a classifier estimates REAL vs. FAKE.", "Text is required; an image is optional and is not used by this model."),
     "image_only": ("Visual patterns in the uploaded image", "ViT encodes the image, then a classifier estimates REAL vs. FAKE.", "An image is required. Text is not used to make this model's prediction."),
-    "standard": ("Combined language and image features", "BERT and ViT features are fused before the REAL vs. FAKE classifier.", "Both text and an image are required; CLIP similarity is diagnostic only."),
+    "standard": ("Combined language and image features", "BERT and ViT feed the classifier; a separate low-CLIP rule can override the final label.", "Both text and an image are required."),
     "consistency_aware": ("Language, image features, and image-text semantic alignment", "BERT and ViT features are fused with CLIP similarity for classification.", "Both text and an image are required. CLIP measures semantic alignment, not truth."),
-    "ablation": ("Combined language and image features without CLIP as a classifier input", "BERT and ViT features are fused; CLIP similarity can be shown as a diagnostic.", "Both text and an image are required. This variant helps compare the role of CLIP."),
+    "ablation": ("Combined language and image features without CLIP in its neural head", "BERT and ViT feed the classifier; a separate low-CLIP rule can override the final label.", "Both text and an image are required. This variant helps compare the role of CLIP."),
 }
 
 DEMO_TEXT = "The city council announced that public buses will be free every Sunday starting next month."
@@ -263,6 +170,8 @@ def prediction_to_dict(result: PredictionResult) -> Dict[str, Any]:
         'timestamp': result.timestamp,
         'text_preview': result.text_preview,
         'image_filename': result.image_filename,
+        'classifier_prediction': result.classifier_prediction,
+        'prediction_reason': result.prediction_reason,
         'disclaimer': result.disclaimer
     }
 
@@ -274,14 +183,22 @@ def main():
     pages = {
         "Analyze": "analysis",
         "Performance": "performance",
-        "Experiments": "experiments",
-        "Guide": "docs",
+        "Dataset Guide": "docs",
     }
-    brand_col, links_col = st.columns([1.15, 3.4])
-    with brand_col:
-        st.markdown('<div class="nav-brand"><span class="nav-mark">T</span><span>TruthLens AI<br><span class="nav-caption">Research studio</span></span></div>', unsafe_allow_html=True)
-    with links_col:
-        selected_page = st.radio("Navigate", list(pages.keys()), horizontal=True, label_visibility="collapsed")
+    st.markdown("""
+    <div class="app-masthead">
+      <div class="masthead-kicker">Multimodal research studio</div>
+      <div class="masthead-title">TruthLens <span>AI</span></div>
+      <p class="masthead-subtitle">Explore model predictions, performance, and the dataset behind the analysis.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    selected_page = st.radio(
+        "Main navigation",
+        list(pages.keys()),
+        horizontal=True,
+        label_visibility="collapsed",
+        key="main_navigation",
+    )
 
     # Load configuration
     config_path = Path(__file__).parent / "configs" / "experiment.yaml"
@@ -299,8 +216,6 @@ def main():
         show_analysis_page(config, default_checkpoint)
     elif pages[selected_page] == "performance":
         show_performance_page(config)
-    elif pages[selected_page] == "experiments":
-        show_experiments_page(config)
     elif pages[selected_page] == "docs":
         show_docs_page()
 
@@ -454,56 +369,61 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
         st.markdown("---")
         st.markdown("### 📋 Analysis Results")
 
+        if (selected_model_type in {"standard", "consistency_aware", "ablation"}
+                and result["consistency_interpretation"].get("possible_mismatch")):
+            st.error(
+                "IMAGE-TEXT MISMATCH RULE APPLIED — final system label is FAKE. "
+                f"The learned classifier alone predicted {result.get('classifier_prediction', 'N/A')}."
+            )
+
         # Prediction display
         pred_class = result['prediction']
         if pred_class == "FAKE":
-            st.markdown(f'<div class="prediction-fake">🚨 FAKE NEWS DETECTED</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="prediction-fake">MODEL LABEL PREDICTION: FAKE</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="prediction-real">✅ APPEARS LEGITIMATE</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="prediction-real">MODEL LABEL PREDICTION: REAL</div>', unsafe_allow_html=True)
 
         # Metrics
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             st.metric(
-                "Probability REAL",
+                "Classifier probability REAL",
                 f"{result['probability_real']:.1%}",
-                help="Estimated probability that this is legitimate news"
+                help="Raw learned classifier probability before the image-text mismatch override"
             )
         with col2:
             st.metric(
-                "Probability FAKE",
+                "Classifier probability FAKE",
                 f"{result['probability_fake']:.1%}",
-                help="Estimated probability that this is fake news"
+                help="Raw learned classifier probability before the image-text mismatch override"
             )
         with col3:
             st.metric(
-                "Confidence",
+                "Classifier confidence",
                 f"{result['confidence']:.1%}",
-                help="Overall confidence in the prediction"
+                help="Confidence of the learned classifier before any mismatch override"
             )
         with col4:
             st.metric(
                 "CLIP Similarity",
-                f"{result['clip_similarity']:.3f}" if selected_model_type != "text_only" else "N/A",
-                help=("Semantic similarity between text and image; this model does not use it for classification."
-                      if selected_model_type in {"standard", "image_only", "ablation"} else
-                      "Semantic similarity between text and image" if selected_model_type != "text_only" else
-                      "Text-only model; CLIP similarity is not used.")
+                f"{result['clip_similarity']:.3f}" if selected_model_type not in {"text_only", "image_only"} else "N/A",
+                help=("CLIP is outside this neural head, but a separate low-alignment policy can override the final label."
+                      if selected_model_type in {"standard", "ablation"} else
+                      "CLIP similarity is an alignment diagnostic and classifier input; it does not verify truth."
+                      if selected_model_type == "consistency_aware" else
+                      "CLIP similarity is not applicable to this model.")
             )
 
         # Consistency interpretation
         st.markdown("#### 🔗 Image-Text Consistency")
         interp = result['consistency_interpretation']
-        if selected_model_type != "consistency_aware":
+        if selected_model_type in {"text_only", "image_only"}:
             interp = {
-                "interpretation": (
-                    "Diagnostic only; this model does not use CLIP similarity for classification."
-                    if selected_model_type != "text_only"
-                    else "Not applicable to the text-only model."
-                ),
-                "level": "Not used by selected classifier",
+                "interpretation": "Not applicable to this single-modality model.",
+                "level": "Not evaluated",
                 "warning": None,
+                "possible_mismatch": False,
             }
 
         consistency_col1, consistency_col2 = st.columns(2)
@@ -514,6 +434,9 @@ def show_analysis_page(config: Dict, default_checkpoint: Path):
         with consistency_col2:
             if interp.get('warning'):
                 st.markdown(f"⚠️ {interp['warning']}")
+
+        if selected_model_type in {"standard", "ablation"} and not interp.get("possible_mismatch"):
+            st.info("CLIP is not part of this model's neural head, but the separate mismatch policy can override its label when similarity is below 0.22.")
 
         # Report generation
         st.markdown("---")
@@ -699,263 +622,104 @@ def show_performance_page(config: Dict):
             st.info("No plots generated yet.")
 
 
-def show_experiments_page(config: Dict):
-    """Research experiments page."""
-    st.markdown('<p class="main-header">Research Experiments</p>', unsafe_allow_html=True)
-
-    st.markdown("""
-    This page presents the research experiments conducted to evaluate the effectiveness
-    of the consistency-aware multimodal fusion approach for fake news detection.
-    """)
-
-    # Image-swap experiment
-    st.markdown("### 🔄 Image-Swap Experiment")
-
-    st.markdown("""
-    The image-swap experiment tests model robustness by:
-    1. Keeping original text and news-truth labels
-    2. Replacing images with unrelated images
-    3. Comparing predictions on original vs. swapped pairs
-    """)
-
-    # Check for experiment results
-    exp_dir = Path(__file__).parent / "results"
-    swap_results_file = exp_dir / "image_swap_results.json"
-
-    if swap_results_file.exists():
-        try:
-            swap_results = json.load(open(swap_results_file))
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("#### Original Pairs")
-                st.json(swap_results.get('original', {}))
-
-            with col2:
-                st.markdown("#### Image-Swapped Pairs")
-                st.json(swap_results.get('swapped', {}))
-
-            st.markdown("#### Performance Difference")
-            st.json(swap_results.get('metric_differences', {}))
-
-        except Exception as e:
-            st.error(f"Error loading results: {e}")
-    else:
-        st.info("No image-swap experiment results found. Run the experiment notebooks to generate results.")
-
-    # Ablation study
-    st.markdown("---")
-    st.markdown("### 🔬 Ablation Study")
-
-    st.markdown("""
-    The ablation study compares:
-    - **Model A**: Text-only (BERT)
-    - **Model B**: Image-only (ViT)
-    - **Model C**: Standard multimodal fusion
-    - **Model D**: Consistency-aware fusion (proposed)
-    - **Model E**: Ablation without CLIP similarity
-    """)
-
-    # Check for ablation results
-    ablation_results_file = exp_dir / "ablation_results.json"
-
-    if ablation_results_file.exists():
-        try:
-            ablation = json.load(open(ablation_results_file))
-
-            import pandas as pd
-            df = pd.DataFrame(ablation)
-            st.dataframe(df, use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Error loading ablation results: {e}")
-    else:
-        st.info("No ablation study results found.")
-
-    # Limitations
-    st.markdown("---")
-    st.markdown("### ⚠️ Important Notes")
-
-    st.markdown("""
-    1. **Dataset Labels**: The Fakeddit dataset uses distant supervision labels, which may contain noise.
-       Not all examples labeled as "FAKE" are necessarily false, and vice versa.
-
-    2. **Semantic vs. Factual**: CLIP similarity measures semantic alignment between image and text,
-       NOT factual accuracy of the news content.
-
-    3. **Domain Shift**: Models trained on Reddit data may not generalize well to other news sources
-       with different writing styles, image types, or topics.
-
-    4. **Image Swap ≠ Fake**: Replacing an image with an unrelated one does NOT automatically make
-       the news fake. The model's response to such swaps reveals its reliance on visual-textual
-       consistency rather than verifying truthfulness.
-    """)
-
-
 def show_docs_page():
-    """Documentation page."""
-    st.markdown('<p class="main-header">Documentation</p>', unsafe_allow_html=True)
+    """Present a visual guide to the local Fakeddit files and their formats."""
+    project_root = Path(__file__).resolve().parent
+    fakeddit_dir = project_root / "data" / "fakeddit"
+    processed_dir = project_root / "data" / "processed"
+    summary_path = processed_dir / "dataset_summary.json"
 
-    docs_dir = Path(__file__).parent / "docs"
+    st.markdown("""
+    <div class="hero" style="margin-bottom:1.25rem">
+      <div class="eyebrow">DATA / LOCAL FILES</div>
+      <h1>Dataset <span style="color:#a94f36">Guide</span></h1>
+      <p>How the Fakeddit text, images, labels, and prepared splits are organized in this project.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Project overview
-    with st.expander("📋 Project Overview", expanded=True):
-        st.markdown("""
-        **TruthLens AI** is a research-oriented system for detecting fake news by analyzing
-        both text and images using deep learning.
+    summary = {}
+    if summary_path.is_file():
+        try:
+            with summary_path.open("r", encoding="utf-8") as summary_file:
+                summary = json.load(summary_file)
+        except (OSError, json.JSONDecodeError):
+            st.warning("The local dataset summary could not be read.")
 
-        ### Architecture
+    train_n = summary.get("train_samples", 1400)
+    val_n = summary.get("val_samples", 300)
+    test_n = summary.get("test_samples", 300)
+    total_n = summary.get("total_samples", train_n + val_n + test_n)
+    images_n = summary.get("images_available")
+    metric_cols = st.columns(4)
+    metric_cols[0].metric("Examples", f"{total_n:,}")
+    metric_cols[1].metric("Train / validation / test", f"{train_n:,} / {val_n:,} / {test_n:,}")
+    metric_cols[2].metric("Images found", f"{images_n:,}" if images_n is not None else "See image folder")
+    metric_cols[3].metric("Prepared labels", "0 = REAL | 1 = FAKE")
 
-        The system uses three main components:
+    st.markdown("### Storage locations")
+    st.caption("These paths are resolved from the project folder on this computer.")
+    location_col1, location_col2 = st.columns(2)
+    with location_col1:
+        st.markdown("**Original dataset and images**")
+        st.code(str(fakeddit_dir), language=None)
+    with location_col2:
+        st.markdown("**Prepared training data**")
+        st.code(str(processed_dir), language=None)
 
-        1. **Text Encoder (BERT)**: Extracts semantic features from news text
-        2. **Image Encoder (ViT)**: Extracts visual features from images
-        3. **CLIP Model**: Measures semantic similarity between text and images
+    st.markdown("### Files, one by one")
+    st.caption("Open a file card to see its exact path, format, and purpose.")
+    files = [
+        ("1. Source metadata", fakeddit_dir / "fakeddit-train.parquet", "Apache Parquet", "Downloaded source table with Fakeddit post metadata. It is the source used to select this local sample."),
+        ("2. Selected dataset subset", fakeddit_dir / "fakeddit_train_subset.tsv", "TSV (tab-separated text)", "The sampled examples, with clean_title, image_id, 3_way_label, and image_url fields."),
+        ("3. Image collection", fakeddit_dir / "images", "Folder of JPEG images", "Images are named by ID. A row with image_id abc123 refers to images/abc123.jpg."),
+        ("4. Combined processed table", processed_dir / "fakeddit_processed.csv", "CSV (comma-separated text)", "All prepared examples before the train, validation, and test split."),
+        ("5. Training split", processed_dir / "train.csv", "CSV (comma-separated text)", f"Examples used to fit the model ({train_n:,} rows)."),
+        ("6. Validation split", processed_dir / "val.csv", "CSV (comma-separated text)", f"Examples used during training to guide model selection ({val_n:,} rows)."),
+        ("7. Test split", processed_dir / "test.csv", "CSV (comma-separated text)", f"Held-out examples used to estimate performance after training ({test_n:,} rows)."),
+        ("8. Dataset summary", summary_path, "JSON", "Counts for the dataset and its splits, class balance, and image availability."),
+    ]
+    for title, file_path, file_format, description in files:
+        with st.expander(title, expanded=False):
+            st.markdown(f"**Format:** {file_format}")
+            st.markdown(f"**Location:** `{file_path}`")
+            st.markdown(description)
+            if file_path.is_dir():
+                st.caption("Individual image path pattern: " + str(file_path / "<image_id>.jpg"))
 
-        ### Research Question
+    st.info(
+        "Yes, this project includes CSV files: fakeddit_processed.csv, train.csv, val.csv, and test.csv. "
+        "It also includes one TSV subset file. There are no Excel workbooks (.xlsx or .xls) in the dataset folder. "
+        "CSV and TSV are plain-text tables that can also be opened in Excel, but they are not Excel workbook files."
+    )
 
-        Does explicitly incorporating image-text semantic consistency improve multimodal
-        fake-news classification compared with standard text-image feature fusion?
-        """)
+    st.markdown("### How a prepared row is structured")
+    st.code('text,image_id,label,image_exists\n"post title text",abc123,0,True', language="csv")
+    st.markdown("""
+    | Field | Example / type | Why it matters |
+    |---|---|---|
+    | `text` | Text string | The language model reads this title or post text. |
+    | `image_id` | `abc123` | Connects the row to its JPEG image for visual and cross-modal analysis. |
+    | `label` | `0` or `1` | The supervised target the classifier learns and evaluation measures. Here, 0 is the subset's true category and 1 groups the other categories. |
+    | `image_exists` | `True` or `False` | Shows whether the matching image was found during preparation. |
+    """)
 
-    # Model details
-    with st.expander("🧠 Model Architecture"):
-        st.markdown("""
-        ### Multimodal Fusion Strategy
+    st.markdown("### Why the dataset and its splits matter")
+    st.markdown(
+        "Text, images, and labels let the project study both the post content and its visual context. "
+        "The training split teaches the classifier; validation supports model selection; and the held-out "
+        "test split gives a less biased estimate of performance. Keeping examples separated across these "
+        "roles helps prevent the model from being evaluated on the same examples it learned from. "
+        "This local subset is balanced between the two labels. Fakeddit labels use distant supervision, "
+        "so they are research targets rather than claim-by-claim fact checks. A FAKE label or an image-text "
+        "mismatch is not proof that a particular post is false."
+    )
 
-        The proposed consistency-aware fusion combines:
-
-        - **Projected text features** (768 → 256 dimensions)
-        - **Projected image features** (768 → 256 dimensions)
-        - **Absolute difference** |T_proj - I_proj|
-        - **Element-wise product** T_proj ⊙ I_proj
-        - **CLIP similarity score**
-
-        ### Fusion Vector Dimension
-
-        ```
-        256 (text) + 256 (image) + 256 (diff) + 256 (product) + 1 (similarity) = 1025
-        ```
-
-        ### Classification Head
-
-        ```
-        Linear(1025, 256) → ReLU → Dropout(0.3) → Linear(256, 1)
-        ```
-        """)
-
-    # Dataset info
-    with st.expander("📁 Dataset Information"):
-        st.markdown("""
-        ### Primary Dataset: Fakeddit
-
-        The Fakeddit dataset is a multimodal fake news dataset collected from Reddit.
-
-        **Citation:**
-        ```
-        @inproceedings{nakamura2020fakeddit,
-          title={Fakeddit: A Multimodal Dataset for Fake News Classification},
-          author={Nakamura, Kai and others},
-          booktitle={LREC},
-          year={2020}
-        }
-        ```
-
-        ### Dataset Access
-
-        Visit [https://fakeddit.netlify.app/](https://fakeddit.netlify.app/) for dataset access.
-
-        ### Label Information
-
-        The dataset uses 3-way labels:
-        - 0: Reliable
-        - 1: Unreliable
-        - 2: Misleading
-
-        For binary classification, we map:
-        - Reliable → 0 (REAL)
-        - Unreliable + Misleading → 1 (FAKE)
-        """)
-
-    # Training guide
-    with st.expander("🚀 Training Guide"):
-        st.markdown("""
-        ### Local Training
-
-        ```bash
-        # Install dependencies
-        pip install -r requirements.txt
-
-        # Train consistency-aware model
-        python scripts/train_model.py --config configs/experiment.yaml --model consistency_aware
-
-        # Evaluate model
-        python scripts/evaluate_model.py --checkpoint artifacts/checkpoints/consistency_aware_best.pt
-        ```
-
-        ### Google Colab Training
-
-        1. Open `notebooks/04_consistency_aware_training.ipynb` in Google Colab
-        2. Upload your dataset to Google Drive
-        3. Update dataset paths in the notebook
-        4. Run cells sequentially with GPU runtime
-
-        ### Training Configuration
-
-        Key parameters in `configs/experiment.yaml`:
-        - `training.batch_size`: 16 (adjust for GPU memory)
-        - `training.learning_rate`: 1e-3
-        - `training.epochs`: 5-10
-        - `model.freeze_encoders`: true (keep encoders frozen)
-        """)
-
-    # Limitations
-    with st.expander("⚠️ Limitations & Disclaimer"):
-        st.markdown("""
-        ### Known Limitations
-
-        1. **Distant Supervision Labels**: Fakeddit uses automatic labeling based on
-           subreddit membership, which may introduce noise.
-
-        2. **Semantic ≠ Factual**: CLIP measures whether an image semantically matches
-           the text, not whether the content is factually accurate.
-
-        3. **Domain Specificity**: Trained on Reddit posts, may not generalize to
-           formal news articles or other domains.
-
-        4. **Image Quality**: Corrupt or low-quality images affect performance.
-
-        5. **Text Length**: Limited to 128 tokens for BERT processing.
-
-        ### Important Disclaimer
-
-        **This system is for research purposes only.**
-
-        - Predictions are based on learned patterns, not verified facts
-        - Semantic similarity does not prove news truthfulness
-        - Always verify information from authoritative sources
-        - Do not use this system for making critical decisions
-        """)
-
-    # References
-    with st.expander("📚 References"):
-        st.markdown("""
-        ### Papers
-
-        1. **BERT**: Devlin et al. "BERT: Pre-training of Deep Bidirectional Transformers"
-        2. **ViT**: Dosovitskiy et al. "An Image is Worth 16x16 Words: Transformers for Image Recognition"
-        3. **CLIP**: Radford et al. "Learning Transferable Visual Models From Natural Language Supervision"
-        4. **Fakeddit**: Nakamura et al. "Fakeddit: A Multimodal Dataset for Fake News Classification"
-        5. **NewsCLIPpings**: Luo et al. "NewsCLIPpings: A Dataset for Out-of-Context News Detection"
-
-        ### Libraries
-
-        - PyTorch: https://pytorch.org/
-        - Hugging Face Transformers: https://huggingface.co/transformers/
-        - Streamlit: https://streamlit.io/
-        """)
-
+    st.markdown("### Dataset reference")
+    st.markdown(
+        "Fakeddit: Nakamura et al., *Fakeddit: A Multimodal Dataset for Fake News Classification* (LREC 2020). "
+        "[Dataset website](https://fakeddit.netlify.app/) · "
+        "[Project repository](https://github.com/entitize/Fakeddit)."
+    )
 
 if __name__ == "__main__":
     main()

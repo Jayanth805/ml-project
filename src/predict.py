@@ -14,7 +14,7 @@ from .classifier import MultimodalClassifier, ClassifierConfig
 from .preprocessing import MultimodalPreprocessor, load_image
 from .utils import (
     get_device, clip_similarity_to_consistency_score,
-    format_probability, timestamp_now, ensure_dir
+    format_probability, timestamp_now, ensure_dir, apply_mismatch_policy
 )
 
 
@@ -32,10 +32,12 @@ class PredictionResult:
     timestamp: str
     text_preview: str
     image_filename: Optional[str]
+    classifier_prediction: Optional[str] = None
+    prediction_reason: str = "classifier"
     disclaimer: str = (
         "This prediction is based on learned patterns and semantic consistency. "
-        "It does not verify factual accuracy. Semantic similarity between image "
-        "and text does not prove the news content is true or false."
+        "A low-CLIP-alignment rule can override the dataset-trained label as FAKE. "
+        "This detects possible image-text mismatch, not factual accuracy or AI-generated media."
     )
 
 
@@ -169,7 +171,8 @@ class NewsAnalyzer:
 
         # Get CLIP similarity for interpretation (even if no checkpoint)
         clip_sim = None
-        if 'clip_pixel_values' in inputs and 'clip_input_ids' in inputs:
+        if (self.model_type not in {"text_only", "image_only"}
+                and 'clip_pixel_values' in inputs and 'clip_input_ids' in inputs):
             with torch.no_grad():
                 clip_similarity = self.model.encoders.compute_clip_similarity(
                     inputs['clip_input_ids'],
@@ -195,18 +198,27 @@ class NewsAnalyzer:
 
         prob_real = 1 - prob_fake
 
-        # Determine prediction
-        prediction = "FAKE" if prob_fake >= threshold else "REAL"
+        # Preserve the learned classifier output, then apply the explicit
+        # cross-modal mismatch policy to every multimodal variant.
+        classifier_prediction = "FAKE" if prob_fake >= threshold else "REAL"
+        decision = apply_mismatch_policy(
+            classifier_prediction=classifier_prediction,
+            model_type=self.model_type,
+            clip_similarity=clip_sim,
+        )
+        prediction = decision["prediction"]
 
         # Compute confidence
         confidence = max(prob_fake, prob_real)
 
         # CLIP similarity interpretation
-        consistency_interpretation = clip_similarity_to_consistency_score(clip_sim) if clip_sim else {
+        consistency_interpretation = clip_similarity_to_consistency_score(clip_sim) if clip_sim is not None else {
             "raw_similarity": None,
-            "interpretation": "No image provided",
+            "interpretation": "Not available for this input",
             "level": "unknown",
-            "warning": "Image required for consistency analysis"
+            "possible_mismatch": False,
+            "mismatch_threshold": None,
+            "warning": "Image-text alignment requires both text and an image."
         }
 
         # Create result
@@ -215,13 +227,15 @@ class NewsAnalyzer:
             probability_fake=prob_fake,
             probability_real=prob_real,
             confidence=confidence,
-            clip_similarity=clip_sim if clip_sim else 0.0,
+            clip_similarity=clip_sim if clip_sim is not None else 0.0,
             consistency_interpretation=consistency_interpretation,
             model_type=self.model_type,
             model_version=self.checkpoint_info.get('timestamp', 'untrained') if self.checkpoint_info else 'untrained',
             timestamp=timestamp_now(),
             text_preview=text[:200] + "..." if len(text) > 200 else text,
-            image_filename=image_filename
+            image_filename=image_filename,
+            classifier_prediction=decision["classifier_prediction"],
+            prediction_reason=decision["prediction_reason"],
         )
 
         return result
